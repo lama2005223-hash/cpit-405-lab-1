@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lab 6 - Like, Dislike & Comments</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            min-height: 100vh;
+            padding: 35px 15px;
+            background: #fff1f6;
+            color: #40303b;
+        }
+        .container {
+            max-width: 590px;
+            margin: auto;
+            padding: 32px;
+            border-radius: 20px;
+            background: white;
+            box-shadow: 0 8px 30px rgba(141, 67, 103, 0.12);
+        }
+        h1 { text-align: center; color: #af4378; margin-bottom: 8px; }
+        .subtitle { text-align: center; color: #78646f; margin-bottom: 28px; }
+        .vote-buttons { display: flex; gap: 15px; justify-content: center; flex-wrap: wrap; }
+        button {
+            border: none;
+            border-radius: 10px;
+            padding: 12px 18px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: transform 0.15s, background-color 0.15s;
+        }
+        button:hover:not(:disabled) { transform: translateY(-2px); }
+        button:disabled { opacity: 0.55; cursor: not-allowed; }
+        #likeBtn { background: #e7f7e9; color: #236337; }
+        #dislikeBtn { background: #fde6e8; color: #962f42; }
+        .counts { text-align: center; margin: 22px 0; font-weight: bold; }
+        .counts span { margin: 0 10px; }
+        h2 { margin-top: 27px; color: #97426b; font-size: 20px; }
+        form { display: flex; gap: 10px; margin-top: 12px; }
+        input {
+            flex: 1;
+            min-width: 0;
+            padding: 12px;
+            border: 1px solid #e5b8cd;
+            border-radius: 10px;
+            font-size: 15px;
+        }
+        #commentBtn { background: #b34880; color: white; }
+        #commentList { padding-left: 24px; overflow-wrap: anywhere; }
+        #commentList li {
+            background: #fff1f7;
+            padding: 11px;
+            margin: 9px 0;
+            border-radius: 8px;
+        }
+        #message { min-height: 22px; color: #a34574; text-align: center; }
+        #resetBtn { display: block; margin: 24px auto 0; background: #ece8eb; color: #493740; }
+        .note { text-align: center; color: #84737b; font-size: 12px; margin-top: 24px; }
+        @media (max-width: 460px) {
+            .container { padding: 22px 16px; }
+            form { flex-direction: column; }
+        }
+    </style>
+</head>
+<body>
+    <main class="container">
+        <h1>Like &amp; Dislike</h1>
+        <p class="subtitle">CPIT 405 - Lab 06: JavaScript, DOM &amp; Cookies</p>
+
+        <div class="vote-buttons">
+            <button id="likeBtn" type="button">👍 Like</button>
+            <button id="dislikeBtn" type="button">👎 Dislike</button>
+        </div>
+
+        <div class="counts">
+            <span>Likes: <span id="likeCount">0</span></span>
+            <span>Dislikes: <span id="dislikeCount">0</span></span>
+        </div>
+
+        <p id="message" role="status" aria-live="polite"></p>
+
+        <h2>Leave a Comment</h2>
+        <form id="commentForm">
+            <input id="commentInput" type="text" maxlength="200" placeholder="Write your comment..." required>
+            <button id="commentBtn" type="submit">Submit</button>
+        </form>
+
+        <h2>Comments</h2>
+        <ul id="commentList"></ul>
+
+        <button id="resetBtn" type="button">Reset Vote &amp; Comments</button>
+        <p class="note">Your choice and comment are saved in this browser using cookies.</p>
+    </main>
+
+    <script>
+        // Cookie functions
+        function setCookie(name, value) {
+            document.cookie = name + "=" + encodeURIComponent(value) +
+                "; max-age=2592000; path=/; SameSite=Lax";
+        }
+
+        function getCookie(name) {
+            let cookies = document.cookie.split(";");
+            for (let cookie of cookies) {
+                let item = cookie.trim().split("=");
+                if (item[0] === name) {
+                    return decodeURIComponent(item.slice(1).join("="));
+                }
+            }
+            return "";
+        }
+
+        function deleteCookie(name) {
+            document.cookie = name + "=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/";
+        }
+
+        // Initialize data from cookies
+        let likes = Number(getCookie("lab6_likes")) || 0;
+        let dislikes = Number(getCookie("lab6_dislikes")) || 0;
+        let choice = getCookie("lab6_choice");
+        let comments = [];
+
+        try {
+            let savedComments = JSON.parse(getCookie("lab6_comments") || "[]");
+            if (Array.isArray(savedComments)) {
+                comments = savedComments;
+            }
+        } catch (error) {
+            comments = [];
+        }
+
+        // Select HTML elements using DOM API
+        const likeBtn = document.getElementById("likeBtn");
+        const dislikeBtn = document.getElementById("dislikeBtn");
+        const likeCount = document.getElementById("likeCount");
+        const dislikeCount = document.getElementById("dislikeCount");
+        const commentForm = document.getElementById("commentForm");
+        const commentInput = document.getElementById("commentInput");
+        const commentBtn = document.getElementById("commentBtn");
+        const commentList = document.getElementById("commentList");
+        const resetBtn = document.getElementById("resetBtn");
+        const message = document.getElementById("message");
+
+        // Update counters, buttons, and comments
+        function updatePage() {
+            likeCount.textContent = likes;
+            dislikeCount.textContent = dislikes;
+
+            likeBtn.disabled = choice !== "";
+            dislikeBtn.disabled = choice !== "";
+            commentInput.disabled = comments.length > 0;
+            commentBtn.disabled = comments.length > 0;
+
+            commentList.innerHTML = "";
+            for (let comment of comments) {
+                let li = document.createElement("li");
+                li.textContent = comment;
+                commentList.appendChild(li);
+            }
+        }
+
+        // Like button click event
+        likeBtn.addEventListener("click", function() {
+            if (choice !== "") return;
+            likes++;
+            choice = "like";
+            setCookie("lab6_likes", likes);
+            setCookie("lab6_choice", choice);
+            message.textContent = "Thanks! You liked this page.";
+            updatePage();
+        });
+
+        // Dislike button click event
+        dislikeBtn.addEventListener("click", function() {
+            if (choice !== "") return;
+            dislikes++;
+            choice = "dislike";
+            setCookie("lab6_dislikes", dislikes);
+            setCookie("lab6_choice", choice);
+            message.textContent = "Your dislike has been recorded.";
+            updatePage();
+        });
+
+        // Comment form submit event
+        commentForm.addEventListener("submit", function(event) {
+            event.preventDefault();
+            let commentText = commentInput.value.trim();
+
+            if (comments.length > 0) {
+                message.textContent = "You have already commented.";
+                return;
+            }
+            if (commentText === "") {
+                message.textContent = "Please write a comment first.";
+                return;
+            }
+
+            comments.push(commentText);
+            setCookie("lab6_comments", JSON.stringify(comments));
+            commentInput.value = "";
+            message.textContent = "Your comment was added successfully!";
+            updatePage();
+        });
+
+        // Reset button click event
+        resetBtn.addEventListener("click", function() {
+            if (!confirm("Reset your vote and comments?")) return;
+
+            deleteCookie("lab6_likes");
+            deleteCookie("lab6_dislikes");
+            deleteCookie("lab6_choice");
+            deleteCookie("lab6_comments");
+
+            likes = 0;
+            dislikes = 0;
+            choice = "";
+            comments = [];
+            commentInput.value = "";
+            message.textContent = "Everything has been reset. You can vote again!";
+            updatePage();
+        });
+
+        // Restore saved state when page loads
+        updatePage();
+    </script>
+</body>
+</html>
