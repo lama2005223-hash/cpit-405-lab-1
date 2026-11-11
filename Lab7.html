@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lab 7 - Photo Explorer</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #fff2f7; color: #37263a; font-family: Arial, sans-serif; }
+    .container { max-width: 1120px; margin: 32px auto; padding: 32px; background: white; border-radius: 22px; box-shadow: 0 8px 26px #a947771b; }
+    h1 { color: #b83f7e; text-align: center; margin: 6px 0 12px; }
+    .subtitle { text-align: center; color: #76556a; margin-bottom: 28px; }
+    label { display: block; font-weight: bold; margin-bottom: 8px; }
+    .fields { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+    input { width: 100%; padding: 12px; border: 1px solid #ddabc5; border-radius: 10px; font-size: 16px; outline-color: #b83f7e; }
+    .hint { font-size: 13px; color: #795b70; margin: 7px 0 0; }
+    .buttons { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; margin: 26px 0 15px; }
+    button { background: #bb467f; color: white; border: 0; padding: 12px 19px; border-radius: 10px; font-size: 15px; cursor: pointer; }
+    button:hover { background: #983066; }
+    button:disabled { opacity: 0.6; cursor: wait; }
+    #status { min-height: 24px; text-align: center; color: #674b60; margin: 20px 0; }
+    #status.error { color: #b91c1c; }
+    #results { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; }
+    .photo-card { border: 1px solid #edd3e0; border-radius: 14px; overflow: hidden; background: #fffafb; transition: transform .15s, box-shadow .15s; }
+    .photo-card.highlight { transform: translateY(-4px); box-shadow: 0 8px 18px #b83f7e33; }
+    .photo-card img { display: block; width: 100%; height: 210px; object-fit: cover; }
+    .photo-info { padding: 12px; }
+    .photo-info p { margin: 0 0 8px; font-size: 14px; }
+    .photo-info a { color: #a83473; font-weight: bold; text-decoration: none; }
+    .photo-info a:hover { text-decoration: underline; }
+    footer { font-size: 13px; text-align: center; margin-top: 25px; color: #76556a; }
+    @media (max-width: 760px) { .container { margin: 12px; padding: 20px; } .fields { grid-template-columns: 1fr; } #results { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+    @media (max-width: 500px) { #results { grid-template-columns: 1fr; } .buttons button { width: 100%; } }
+  </style>
+</head>
+<body>
+  <main class="container">
+    <h1>Photo Explorer</h1>
+    <p class="subtitle">CPIT 405 - Lab 07: Ajax with XHR, Fetch Promises, and Async/Await</p>
+
+    <div class="fields">
+      <div>
+        <label for="apiKey">Unsplash Access Key</label>
+        <input type="password" id="apiKey" placeholder="Paste your Unsplash Access Key" autocomplete="off">
+        <p class="hint">For this class exercise, enter your Access Key (never your Secret Key). It is not saved. Do not publish keys in GitHub.</p>
+      </div>
+      <div>
+        <label for="searchInput">Search for photos</label>
+        <input type="text" id="searchInput" value="nature" placeholder="e.g. flowers, cats, mountains">
+        <p class="hint">Type a keyword, then choose one of the three API methods.</p>
+      </div>
+    </div>
+
+    <div class="buttons">
+      <button type="button" id="xhrBtn">Search with XHR</button>
+      <button type="button" id="fetchBtn">Search with Fetch (Promises)</button>
+      <button type="button" id="asyncBtn">Search with Async/Await</button>
+    </div>
+
+    <p id="status" role="status" aria-live="polite">Enter your Access Key to begin.</p>
+    <section id="results" aria-label="Unsplash photo results"></section>
+    <footer>Images and photographers credited to <a href="https://unsplash.com/?utm_source=cpit405_lab7&utm_medium=referral" target="_blank" rel="noopener noreferrer">Unsplash</a>.</footer>
+  </main>
+
+  <script>
+    // 1. Select elements using the DOM API
+    const apiKeyInput = document.getElementById("apiKey");
+    const searchInput = document.getElementById("searchInput");
+    const results = document.getElementById("results");
+    const statusText = document.getElementById("status");
+    const buttons = [
+      document.getElementById("xhrBtn"),
+      document.getElementById("fetchBtn"),
+      document.getElementById("asyncBtn")
+    ];
+
+    // 2. Read input and create the API URL
+    function getRequestInfo() {
+      const accessKey = apiKeyInput.value.trim();
+      const keyword = searchInput.value.trim();
+
+      if (!accessKey) {
+        showStatus("Please enter your Unsplash Access Key.", true);
+        return null;
+      }
+      if (!keyword) {
+        showStatus("Please type a search keyword.", true);
+        return null;
+      }
+
+      const url = "https://api.unsplash.com/search/photos?query=" +
+        encodeURIComponent(keyword) + "&per_page=12";
+      return { accessKey: accessKey, url: url };
+    }
+
+    function showStatus(message, isError = false) {
+      statusText.textContent = message;
+      statusText.classList.toggle("error", isError);
+    }
+
+    function setLoading(loading) {
+      for (const button of buttons) {
+        button.disabled = loading;
+      }
+      if (loading) {
+        results.replaceChildren();
+        showStatus("Loading photos...");
+      }
+    }
+
+    function getErrorMessage(status) {
+      if (status === 401 || status === 403) {
+        return "Access denied. Check your Unsplash Access Key (HTTP " + status + ").";
+      }
+      if (status === 429) {
+        return "Rate limit reached. Try again later (HTTP 429).";
+      }
+      return "Unsplash request failed (HTTP " + status + ").";
+    }
+
+    // 3. Create HTML cards dynamically using the DOM API
+    function displayPhotos(data) {
+      results.replaceChildren();
+      const photos = data.results || [];
+
+      if (photos.length === 0) {
+        showStatus("No photos found. Try another keyword.");
+        return;
+      }
+
+      for (const photo of photos) {
+        const card = document.createElement("article");
+        card.className = "photo-card";
+
+        const img = document.createElement("img");
+        img.src = photo.urls.small;   // Use image URLs returned by Unsplash
+        img.alt = photo.alt_description || "Unsplash photo";
+        img.loading = "lazy";
+        card.appendChild(img);
+
+        const info = document.createElement("div");
+        info.className = "photo-info";
+
+        const description = document.createElement("p");
+        description.textContent = photo.description || photo.alt_description || "Photo from Unsplash";
+        info.appendChild(description);
+
+        const author = document.createElement("a");
+        const authorUrl = new URL(photo.user.links.html);
+        authorUrl.searchParams.set("utm_source", "cpit405_lab7");
+        authorUrl.searchParams.set("utm_medium", "referral");
+        author.href = authorUrl.toString();
+        author.textContent = "By " + photo.user.name + " on Unsplash";
+        author.target = "_blank";
+        author.rel = "noopener noreferrer";
+        info.appendChild(author);
+
+        const viewLink = document.createElement("p");
+        const photoUrl = new URL(photo.links.html);
+        photoUrl.searchParams.set("utm_source", "cpit405_lab7");
+        photoUrl.searchParams.set("utm_medium", "referral");
+        const link = document.createElement("a");
+        link.href = photoUrl.toString();
+        link.textContent = "View photo";
+        link.target = "_blank";
+        link.rel = "noopener noreferrer";
+        viewLink.appendChild(link);
+        info.appendChild(viewLink);
+
+        card.appendChild(info);
+        results.appendChild(card);
+      }
+      showStatus("Found " + data.total + " photos. Showing " + photos.length + ".");
+    }
+
+    // 4. Search using XMLHttpRequest (XHR)
+    function searchWithXHR() {
+      const request = getRequestInfo();
+      if (!request) return;
+
+      setLoading(true);
+      const xhr = new XMLHttpRequest();
+      xhr.open("GET", request.url, true);
+      xhr.setRequestHeader("Authorization", "Client-ID " + request.accessKey);
+      xhr.setRequestHeader("Accept-Version", "v1");
+
+      xhr.onload = function() {
+        setLoading(false);
+        if (xhr.status === 200) {
+          try {
+            displayPhotos(JSON.parse(xhr.responseText));
+          } catch (error) {
+            showStatus("Could not read the API response.", true);
+          }
+        } else {
+          showStatus(getErrorMessage(xhr.status), true);
+        }
+      };
+      xhr.onerror = function() {
+        setLoading(false);
+        showStatus("Network error. Check your connection.", true);
+      };
+      xhr.send();
+    }
+
+    // 5. Search using Fetch with Promises (.then)
+    function searchWithFetch() {
+      const request = getRequestInfo();
+      if (!request) return;
+
+      setLoading(true);
+      fetch(request.url, {
+        headers: {
+          "Authorization": "Client-ID " + request.accessKey,
+          "Accept-Version": "v1"
+        }
+      })
+      .then(function(response) {
+        if (!response.ok) throw new Error(getErrorMessage(response.status));
+        return response.json();
+      })
+      .then(function(data) {
+        displayPhotos(data);
+      })
+      .catch(function(error) {
+        showStatus(error.message, true);
+      })
+      .finally(function() {
+        setLoading(false);
+      });
+    }
+
+    // 6. Search using Fetch with async/await
+    async function searchWithAsyncAwait() {
+      const request = getRequestInfo();
+      if (!request) return;
+
+      setLoading(true);
+      try {
+        const response = await fetch(request.url, {
+          headers: {
+            "Authorization": "Client-ID " + request.accessKey,
+            "Accept-Version": "v1"
+          }
+        });
+        if (!response.ok) throw new Error(getErrorMessage(response.status));
+        const data = await response.json();
+        displayPhotos(data);
+      } catch (error) {
+        showStatus(error.message, true);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    // 7. Handle mouse click events
+    document.getElementById("xhrBtn").addEventListener("click", searchWithXHR);
+    document.getElementById("fetchBtn").addEventListener("click", searchWithFetch);
+    document.getElementById("asyncBtn").addEventListener("click", searchWithAsyncAwait);
+
+    // 8. Handle keyboard Enter key
+    searchInput.addEventListener("keydown", function(event) {
+      if (event.key === "Enter") searchWithAsyncAwait();
+    });
+    apiKeyInput.addEventListener("keydown", function(event) {
+      if (event.key === "Enter") searchWithAsyncAwait();
+    });
+
+    // 9. Event delegation for photo card hover
+    results.addEventListener("mouseover", function(event) {
+      const card = event.target.closest(".photo-card");
+      if (card) card.classList.add("highlight");
+    });
+    results.addEventListener("mouseout", function(event) {
+      const card = event.target.closest(".photo-card");
+      if (card && !card.contains(event.relatedTarget)) {
+        card.classList.remove("highlight");
+      }
+    });
+  </script>
+</body>
+</html>
