@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Contact Lama Abdullah and send a message through a FormSubmit-powered contact form.">
+  <title>Contact | Lama Abdullah</title><link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="site-header"><div class="shell header-inner"><a class="brand" href="index.html"><span class="brand-symbol" aria-hidden="true">✳</span><span>LAMA / <span class="text-accent">PORTFOLIO</span><small>DESIGN • CODE • CURIOSITY</small></span></a><nav class="site-nav" aria-label="Main navigation"><a href="index.html">Home</a><a href="cv.html">My CV</a><a href="projects.html">Projects</a><a href="labs.html">Labs</a><a href="journey.html">My Journey</a><a href="contact.html" aria-current="page">Contact</a></nav></div></header>
+  <main id="main" class="shell">
+    <section class="page-intro"><p class="eyebrow">Say hello</p><h1>Let's start a <span class="text-accent">conversation.</span></h1><p class="lead">Have a question about one of my projects? I'd love to hear your feedback. Use the form or the links below.</p></section>
+    <section class="contact-grid" aria-label="Contact options and form">
+      <div class="contact-card"><span class="pill"><span class="dot"></span> Contact details</span><h2 style="margin-top:22px">Find me <span class="text-accent">online.</span></h2><p>I'm a student at King Abdulaziz University, exploring the world of web development.</p><div class="contact-info"><a href="mailto:lalghamdi0249@stu.kau.edu.sa">✉ &nbsp; lalghamdi0249@stu.kau.edu.sa</a><a href="https://github.com/lama2005223-hash/cpit-405-lab-1" target="_blank" rel="noopener noreferrer">⌘ &nbsp; GitHub repository ↗</a><a href="labs.html">✳ &nbsp; Explore my completed labs ↗</a></div></div>
+      <div class="contact-card"><h2>Send a message <span class="text-accent">↗</span></h2><p>Have a question or want to connect? Feel free to send me a message!</p>
+        <form action="https://formsubmit.co/lama.abdullah.it@gmail.com" method="POST">
+          <input type="hidden" name="_subject" value="New Portfolio Contact Message">
+          <input type="hidden" name="_template" value="table">
+          <input type="text" name="_honey" tabindex="-1" autocomplete="off" style="display:none" aria-hidden="true">
+          <div class="field-row"><div class="field"><label for="contact-name">Your name *</label><input id="contact-name" name="name" type="text" placeholder="e.g., Sarah" maxlength="100" required></div><div class="field"><label for="contact-email">Your email *</label><input id="contact-email" name="email" type="email" placeholder="you@example.com" maxlength="200" required></div></div>
+          <div class="field"><label for="contact-topic">Message type</label><select id="contact-topic" name="message_type"><option value="Question">Question</option><option value="Feedback">Feedback</option><option value="Collaboration">Collaboration idea</option></select></div>
+          <div class="field"><label for="contact-message">Your message *</label><textarea id="contact-message" name="message" placeholder="Write your message here..." minlength="5" maxlength="3000" required></textarea></div>
+          <button class="button arrow" type="submit">Send message</button>
+        </form>
+      </div>
+    </section>
+  </main>
+  <footer class="site-footer"><div class="shell footer-inner"><span>© 2026 Lama Abdullah · Thanks for visiting!</span><span><a href="index.html">Home</a> · <a href="labs.html">Labs</a></span></div></footer>
+</body>
+</html>
